@@ -46,6 +46,12 @@ class LogStash::Inputs::Fifo < LogStash::Inputs::Base
   READ_SIZE = 16384
 
   public
+
+  # Fifos cannot be reloaded
+  def self.reloadable?
+    false
+  end
+
   def register
     @host = Socket.gethostname
     open_close_file
