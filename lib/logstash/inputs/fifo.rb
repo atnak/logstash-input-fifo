@@ -55,7 +55,9 @@ class LogStash::Inputs::Fifo < LogStash::Inputs::Base
   def run(queue)
     while !stop?
       begin
-        data = @file.read(READ_SIZE)
+        data = @file.readpartial(READ_SIZE)
+      rescue EOFError
+        data = nil
       rescue => e
         # ignore exceptions during shutdown
         break if stop?
