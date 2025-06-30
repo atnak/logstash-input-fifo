@@ -1,0 +1,34 @@
+name: Ruby Gem
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  build:
+    name: Build + Publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    # Set up
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+
+# 2025-07-1: Doesn't seem required. We can't build anyhow without logstash-* dependencies
+#    - name: Set up Ruby
+#      uses: ruby/setup-ruby@v1
+#      with:
+#        ruby-version: jruby
+#
+    - name: Configure trusted publishing credentials
+      uses: rubygems/configure-rubygems-credentials@v1.0.0
+
+    - name: Publish to RubyGems
+      run: |
+        gem build *.gemspec
+        gem push *.gem
