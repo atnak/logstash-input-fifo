@@ -1,6 +1,7 @@
 # encoding: utf-8
 require "logstash/inputs/base"
 require "logstash/namespace"
+require 'logstash/plugin_mixins/ecs_compatibility_support'
 require "socket" # for Socket.gethostname
 
 # Read events from a single file or fifo (named pipe).
@@ -23,6 +24,8 @@ require "socket" # for Socket.gethostname
 # By default, each event is assumed to be one line.  The multiline filter
 # may be used to join consecutive lines
 class LogStash::Inputs::Fifo < LogStash::Inputs::Base
+  include LogStash::PluginMixins::ECSCompatibilitySupport(:disabled, :v1, :v8 => :v1)
+
   config_name "fifo"
 
   default :codec, "line"
@@ -50,6 +53,13 @@ class LogStash::Inputs::Fifo < LogStash::Inputs::Base
     false
   end
 
+  def initialize(*params)
+    super
+
+    @event_host_key = ecs_select[disabled: 'host', v1: '[host][hostname]']
+    @event_original_key = ecs_select[disabled: nil, v1: '[event][original]']
+  end
+
   def register
     @host = Socket.gethostname
     open_close_file
@@ -68,7 +78,11 @@ class LogStash::Inputs::Fifo < LogStash::Inputs::Base
 
       decode_events(line) do |event|
         decorate(event)
-        event.set("host", @host) if !event.include?("host")
+        if @event_original_key
+          # I guess this assumes one event equals one line
+          event.set(@event_original_key, line) if !event.include?(@event_original_key)
+        end
+        event.set(@event_host_key, @host) if !event.include?(@event_host_key)
         queue << event
       end
 
