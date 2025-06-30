@@ -43,8 +43,6 @@ class LogStash::Inputs::Fifo < LogStash::Inputs::Base
   # pipe to `path` will result in an error.
   config :reopen_after_eof, :validate => :boolean, :default => false
 
-  READ_SIZE = 16384
-
   public
 
   # Fifos cannot be reloaded
@@ -61,22 +59,20 @@ class LogStash::Inputs::Fifo < LogStash::Inputs::Base
   def run(queue)
     while !stop?
       begin
-        data = @file.readpartial(READ_SIZE)
-      rescue EOFError
-        data = nil
+        line = @file.gets
       rescue => e
         # ignore exceptions during shutdown
         break if stop?
         raise
       end
 
-      decode_events(data) do |event|
+      decode_events(line) do |event|
         decorate(event)
         event.set("host", @host) if !event.include?("host")
         queue << event
       end
 
-      if not data
+      if not line
         if @reopen_after_eof
           open_close_file
         else
